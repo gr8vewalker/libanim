@@ -57,7 +57,7 @@ static int tr_turkanime_search(const char *input, size_t *size,
     int retval = 0;
     char *encoded = NULL, *search_data = NULL, *body = NULL;
     xmlXPathObjectPtr result = NULL;
-    animDocument document;
+    animDocument document = {NULL, NULL};
 
     if (urlenc(input, &encoded) != 0) {
         retval = -1;
@@ -134,7 +134,7 @@ int tr_turkanime_details(animEntry *entry) {
     int retval = 0;
     char *body = NULL, *anime_id = NULL, *episodes_url = NULL;
     xmlXPathObjectPtr result = NULL;
-    animDocument document;
+    animDocument document = {NULL, NULL};
 
     if (get(entry->link, NULL, 0, &body) != 0 ||
         load_document(body, &document) != 0) {
@@ -270,13 +270,10 @@ int tr_turkanime_fansub_sources(animPart *part, const animDocument *document,
     xmlNodeSetPtr hosts = result->nodesetval;
     size_t hosts_size = hosts->nodeNr;
 
-    animDocument host_document;
+    animDocument host_document = {NULL, NULL};
     const char *header = "X-Requested-With: XMLHttpRequest";
 
-    char *url;
-    char *body;
-    char *host_name;
-    char *encrypted;
+    char *url = NULL, *body = NULL, *host_name = NULL, *encrypted = NULL;
 
     for (size_t i = 0; i < hosts_size; ++i) {
         xmlNodePtr node = hosts->nodeTab[i];
@@ -288,8 +285,7 @@ int tr_turkanime_fansub_sources(animPart *part, const animDocument *document,
 
         if (get(url, &header, 1, &body) != 0 ||
             load_document(body, &host_document) != 0) {
-            free(url);
-            continue;
+            goto for_end;
         }
 
         host_name = xpath_s(
@@ -305,9 +301,15 @@ int tr_turkanime_fansub_sources(animPart *part, const animDocument *document,
 
         free(encrypted);
         free(host_name);
+
+    for_end:
         free(body);
         free(url);
         unload_document(&host_document);
+
+        body = NULL;
+        host_document.html = NULL;
+        host_document.context = NULL;
     }
 
     xmlXPathFreeObject(result);
@@ -315,16 +317,20 @@ int tr_turkanime_fansub_sources(animPart *part, const animDocument *document,
 }
 
 int tr_turkanime_sources(animPart *part) {
-    char *body;
-    animDocument document;
+    int retval = 0;
+    char *body = NULL;
+    animDocument document = {NULL, NULL};
+    xmlXPathObjectPtr result = NULL;
 
     if (get(part->link, NULL, 0, &body) != 0 ||
-        load_document(body, &document) != 0)
-        return -1;
+        load_document(body, &document) != 0) {
+        retval = -1;
+        goto end;
+    }
 
     free(body);
 
-    xmlXPathObjectPtr result = xpath(
+    result = xpath(
         "//div[@id='videodetay']//div[@class='pull-right']//button", &document);
 
     xmlNodeSetPtr fansubbers = result->nodesetval;
@@ -333,8 +339,6 @@ int tr_turkanime_sources(animPart *part) {
     part->sources_size = 0;
     part->sources = malloc(sizeof(animSource));
 
-    int retval;
-
     if (fansubbers_size == 1) {
         xmlNodePtr node = fansubbers->nodeTab[0];
         char *fansub = xpath_ns("normalize-space(.)", node, &document);
@@ -342,11 +346,13 @@ int tr_turkanime_sources(animPart *part) {
         free(fansub);
     } else {
         const char *header = "X-Requested-With: XMLHttpRequest";
+
+        char *onclick = NULL, *fansub = NULL;
         animDocument fansub_document;
         for (size_t i = 0; i < fansubbers_size; ++i) {
             xmlNodePtr node = fansubbers->nodeTab[i];
 
-            char *onclick = xpath_ns("concat('" TURKANIME_BASE
+            onclick = xpath_ns("concat('" TURKANIME_BASE
                                      "/', substring-before(substring-after("
                                      "@onclick, "
                                      "concat('IndexIcerik(', \"'\")), \"'\"))",
@@ -354,24 +360,26 @@ int tr_turkanime_sources(animPart *part) {
 
             if (get(onclick, &header, 1, &body) != 0 ||
                 load_document(body, &fansub_document) != 0) {
-                free(onclick);
-                continue;
+                goto for_end;
             }
 
-            char *fansub = xpath_ns("normalize-space(.)", node, &document);
-
+            fansub = xpath_ns("normalize-space(.)", node, &document);
             tr_turkanime_fansub_sources(part, &fansub_document, fansub);
+            free(fansub);
 
+        for_end:
             free(body);
             free(onclick);
-            free(fansub);
             unload_document(&fansub_document);
-        }
 
-        xmlXPathFreeObject(result);
-        retval = 0;
+            body = NULL;
+            fansub_document.html = NULL;
+            fansub_document.context = NULL;
+        }
     }
 
+end:
+    xmlXPathFreeObject(result);
     unload_document(&document);
     return retval;
 }
