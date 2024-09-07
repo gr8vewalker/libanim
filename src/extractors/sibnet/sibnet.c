@@ -38,21 +38,25 @@ int sibnet_extract(animPart *part, const char *link, const char *name) {
         goto end;
     }
 
-    part->sources = malloc(sizeof(animSource));
+    size_t i = part->sources_size;
+
+    animSource *ptr = realloc(part->sources, (i + 1) * sizeof(animSource));
     if (!part->sources) {
         retval = 1;
         goto end;
     }
 
-    part->sources_size = 1;
+    part->sources = ptr;
 
-    part->sources[0].name = strdup(name);
-    part->sources[0].extractor = SIBNET;
-    part->sources[0].part = part;
+    part->sources[i].name = strdup(name);
+    part->sources[i].extractor = SIBNET;
+    part->sources[i].part = part;
 
-    char *format = strncmp("http", vidsrc, 4) == 0 ? "%s" : "https://video.sibnet.ru%s";
+    char *format =
+        strncmp("http", vidsrc, 4) == 0 ? "%s" : "https://video.sibnet.ru%s";
+    part->sources[i].link = format_string(format, vidsrc);
 
-    part->sources[0].link = format_string(format, vidsrc);
+    part->sources_size++;
 
 end:
     free(vidsrc);
