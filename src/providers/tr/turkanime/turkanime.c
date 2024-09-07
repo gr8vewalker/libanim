@@ -14,6 +14,7 @@
 #include "src/cjson/cJSON.h"
 #include "src/extractors/alucard/alucard.h"
 #include "src/extractors/extractor.h"
+#include "src/extractors/sibnet/sibnet.h"
 #include "src/providers/provider.h"
 
 #define TURKANIME_BASE "https://www.turkanime.co"
@@ -28,6 +29,7 @@
     "hDPPbH7K2bp9^3o41hw,khL:}Kx8080@M"
 
 #define MURMUR_ALUCARD 16231995801545578170ull
+#define MURMUR_SIBNET 6246051105292551857ull
 
 static int tr_turkanime_filters(size_t *size, animFilter **filters) {
     *filters = NULL;
@@ -202,6 +204,9 @@ int tr_turkanime_host_sources(animPart *part, const char *encrypted,
     case MURMUR_ALUCARD:
         extractor = ALUCARD_EXTRACTOR();
         break;
+    case MURMUR_SIBNET:
+        extractor = SIBNET_EXTRACTOR();
+        break;
     }
 
     if (!extractor)
@@ -218,6 +223,13 @@ int tr_turkanime_host_sources(animPart *part, const char *encrypted,
     char *decrypted = decrypt_aes(ciphertext, salt, TURKANIME_AES);
     decrypted[strlen(decrypted) - 1] = 0;
     char *url = format_string("https:%s", decrypted + 1);
+
+    // Remove backslashes from url
+    size_t len = 0;
+    for (size_t i = 0; url[i] != '\0'; ++i)
+        if (url[i] != '\\')
+            url[len++] = url[i];
+    url[len] = '\0';
 
     free(decrypted);
 
