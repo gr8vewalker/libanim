@@ -21,7 +21,7 @@ int alucard_extract(animPart *part, const char *link, const char *name) {
     char *body = NULL, *converted_link = NULL, *file = NULL, *playlist = NULL;
 
     const char *source_id =
-        link + strlen("https:\\/\\/www.turkanime.co\\/player\\/");
+        link + strlen("https://www.turkanime.co/player/");
     const char *source_headers[4] = {
         "X-Requested-With: XMLHttpRequest",
         "Csrf-Token: EqdGHqwZJvydjfbmuYsZeGvBxDxnQXeARRqUNbhRYnPEWqdDnYFEKVBaUPCAGTZA",
