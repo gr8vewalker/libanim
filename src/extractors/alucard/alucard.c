@@ -1,7 +1,6 @@
 #include "alucard.h"
 
 #include <errno.h>
-#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -103,12 +102,9 @@ int alucard_download(const animSource *source, const char *path,
     const char *https = "https://";
     char *line = strtok(playlist, lf);
 
-    size_t index = 0, threaded = 0;
+    size_t index = 0, parallel = 0;
 
-    // Threading... Fucking playlists.
-    // TODO: Convert this to curl multi handle
-    pthread_t threads[30];
-    threaded_download_info informations[30];
+    parallel_download_info informations[30];
 
     concat_file = format_string("%s/concat.txt", download_directory);
     ffmpeg_concat = fopen(concat_file, "wb");
@@ -117,32 +113,26 @@ int alucard_download(const animSource *source, const char *path,
         if (strncmp(https, line, strlen(https)) == 0) {
             file = format_string("%s/%zu.mp4", download_directory, index);
 
-            informations[threaded].url = strdup(line);
-            informations[threaded].headers = NULL;
-            informations[threaded].headers_size = 0;
-            informations[threaded].path = strdup(file);
+            informations[parallel].url = strdup(line);
+            informations[parallel].headers = NULL;
+            informations[parallel].headers_size = 0;
+            informations[parallel].path = strdup(file);
             fprintf(ffmpeg_concat, "file '%zu.mp4'\n", index);
             free(file);
 
-            if (pthread_create(&threads[threaded], NULL, downloadfile_t,
-                               &informations[threaded]) != 0) {
-                retval = -1;
-                goto end;
-            }
-
-            threaded++;
+            parallel++;
             index++;
         }
 
         line = strtok(0, lf);
 
-        if (threaded == 30 || !line) {
-            for (size_t i = 0; i < threaded; i++) {
-                pthread_join(threads[i], NULL);
+        if (parallel == 30 || !line) {
+            downloadfile_concurrent(informations, parallel);
+            for (size_t i = 0; i < parallel; i++) {
                 free(informations[i].url);
                 free(informations[i].path);
             }
-            threaded = 0;
+            parallel = 0;
         }
     }
 

@@ -53,17 +53,21 @@ int post(const char *url, const char **headers, int headers_size,
 int downloadfile(const char *url, const char **headers, int headers_size,
                  const char *path);
 
-typedef struct threaded_download_info {
+typedef struct parallel_download_info {
     char *url;
     const char **headers;
     int headers_size;
     char *path;
-} threaded_download_info;
+} parallel_download_info;
 
 /**
- * pthreads function wrapper for {@link downloadfile}
+ * Concurrent download function.
+ *
+ * @param informations Download informations
+ * @param size Informations size
+ * @return 0 if success
  */
-void *downloadfile_t(void *ptr);
+int downloadfile_concurrent(parallel_download_info *informations, size_t size);
 
 /**
  * URL encodes given data.

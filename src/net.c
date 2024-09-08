@@ -109,12 +109,68 @@ int downloadfile(const char *url, const char **headers, int headers_size,
     return res;
 }
 
-void *downloadfile_t(void *ptr) {
-    threaded_download_info *info = (threaded_download_info *)ptr;
-    FILE *file = fopen(info->path, "wb");
-    handle_curl(info->url, info->headers, info->headers_size, NULL, 0, file, 1);
-    fclose(file);
-    return NULL;
+int downloadfile_concurrent(parallel_download_info *informations, size_t size) {
+    CURL *handles[size];
+    FILE *files[size];
+    struct curl_slist *header_slists[size];
+    curl_writer writers[size];
+    CURLM *multi_handle;
+
+    int running = 1;
+
+    multi_handle = curl_multi_init();
+    if (!multi_handle)
+        return 1;
+
+    for (size_t i = 0; i < size; i++) {
+        handles[i] = curl_easy_init();
+        parallel_download_info information = informations[i];
+
+        header_slists[i] = NULL;
+        for (size_t j = 0; j < information.headers_size; j++) {
+            header_slists[i] =
+                curl_slist_append(header_slists[i], information.headers[j]);
+        }
+
+        files[i] = fopen(information.path, "wb");
+
+        writers[i].type = 1;
+        writers[i].buffer = files[i];
+        writers[i].size = 0;
+
+        CURL *curl = handles[i];
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, header_slists[i]);
+        curl_easy_setopt(curl, CURLOPT_URL, information.url);
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_write);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &writers[i]);
+        curl_easy_setopt(curl, CURLOPT_IPRESOLVE, CURL_IPRESOLVE_V4);
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+        curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+
+        curl_multi_add_handle(multi_handle, handles[i]);
+    }
+
+    while (running) {
+        CURLMcode mc = curl_multi_perform(multi_handle, &running);
+
+        if (running)
+            mc = curl_multi_poll(multi_handle, NULL, 0, 1000, NULL);
+
+        if (mc)
+            break;
+    }
+
+    // TODO: add failed download handling by curl msgs
+
+    for (size_t i = 0; i < size; i++) {
+        fclose(files[i]);
+        curl_slist_free_all(header_slists[i]);
+        curl_multi_remove_handle(multi_handle, handles[i]);
+        curl_easy_cleanup(handles[i]);
+    }
+
+    curl_multi_cleanup(multi_handle);
+    return 0;
 }
 
 int urlenc(const char *data, char **encoded) {
