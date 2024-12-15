@@ -3,34 +3,6 @@
 
 #include <stddef.h>
 
-typedef enum animFilterType { SELECTION, TEXT, CHECK } animFilterType;
-
-typedef struct animSelectionFilter {
-    size_t size;
-    char **elements;
-    char **data; // if elements are same with data this should be NULL.
-    int value;
-} animSelectionFilter;
-
-typedef struct animTextFilter {
-    size_t max_size;
-    char *value;
-} animTextFilter;
-
-typedef struct animCheckFilter {
-    int value;
-} animCheckFilter;
-
-typedef struct animFilter {
-    animFilterType type;
-    char *name;
-    union {
-        animSelectionFilter *selection;
-        animTextFilter *text;
-        animCheckFilter *check;
-    } data;
-} animFilter;
-
 struct animExtractor;
 struct animSource;
 struct animEntry;
@@ -96,15 +68,6 @@ animProvider *anim_list_providers(size_t *size);
  * @return Provider found or NULL
  */
 animProvider *anim_get_provider(char *name, int exact);
-
-/**
- * Get filters for a provider.
- *
- * @param provider the Provider
- * @param size Pointer to get size of filters
- * @return newly allocated filters array
- */
-animFilter *anim_get_filters(animProvider *provider, size_t *size);
 
 /**
  * Search for entries in a provider.

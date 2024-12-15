@@ -31,14 +31,6 @@
 #define MURMUR_ALUCARD 16231995801545578170ull
 #define MURMUR_SIBNET 6246051105292551857ull
 
-static int tr_turkanime_filters(size_t *size, animFilter **filters) {
-    *filters = NULL;
-    *size = 0;
-
-    // TODO: implement.
-    return 0;
-}
-
 static int tr_turkanime_search(const char *input, size_t *size,
                                animEntry **entries) {
     if (strncmp(TURKANIME_ANIME_ENDPOINT, input,
@@ -391,7 +383,6 @@ int tr_turkanime_provider(_animProvider *ptr) {
     ptr->id = 0;
     ptr->name = "TurkAnime";
     ptr->data = malloc(sizeof(_animProviderData));
-    ptr->data->create_filters = tr_turkanime_filters;
     ptr->data->search = tr_turkanime_search;
     ptr->data->details = tr_turkanime_details;
     ptr->data->sources = tr_turkanime_sources;

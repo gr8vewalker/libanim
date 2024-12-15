@@ -73,19 +73,6 @@ animProvider *anim_get_provider(char *name, int exact) {
     return NULL;
 }
 
-animFilter *anim_get_filters(animProvider *ptr, size_t *size) {
-    if (!INITIALIZED)
-        return NULL;
-    _animProvider *_ptr = (_animProvider *)ptr;
-
-    animFilter *filters;
-    if (_ptr->data->create_filters(size, &filters) != 0)
-        return NULL;
-
-    return filters;
-}
-
-// TODO: add filter support.
 int anim_search(animProvider *provider, const char *input, size_t *size,
                 animEntry **entries) {
     if (!INITIALIZED)
