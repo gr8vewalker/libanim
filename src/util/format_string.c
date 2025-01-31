@@ -1,6 +1,7 @@
 #include "libanim/util.h"
 #include <stdarg.h>
 
+#define __STDC_WANT_LIB_EXT2__ 1
 #define _GNU_SOURCE
 #include <stdio.h>
 
